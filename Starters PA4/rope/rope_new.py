@@ -163,21 +163,18 @@ def find(root, index_to_find):
     (node_found, index_in_node) = findNextIndex(root, index_to_find)
     new_root = root
     if (node_found != None):
-        new_root = splay(node_found)
+        #new_root = splay(node_found)
         #now getting ready to split the node
         if index_in_node > 0:
-            node_left = new_root
+            node_left = node_found #new_root
+            #we'll make node_right a child of node_left
             new_length = node_left.length - index_in_node
-            node_right = Vertex(node_left.key + index_in_node, node_left.size, new_length, node_left, node_left.right, None)
-            if (node_right.right != None):
-                node_right.right.parent = node_right
+            node_right = Vertex(node_left.key + index_in_node, new_length, new_length, None, node_left.right, node_left)
+            update(node_right)
             node_left.length = index_in_node
-            node_left.parent = node_right
-            node_left.right = None
-            if (node_left.left != None):
-                node_left.size = node_left.left.size + node_left.length
+            node_left.right = node_right
             node_found = node_right
-            new_root = node_right
+            new_root = splay(node_found)
     return (node_found, new_root)
 
 #splits tree into left and right
