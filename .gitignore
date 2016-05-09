@@ -1,0 +1,5 @@
+*.pdf
+*.txt
+*.zip
+*.DS_Store
+**/test*/*
