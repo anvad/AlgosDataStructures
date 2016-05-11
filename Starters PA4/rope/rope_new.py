@@ -20,12 +20,21 @@ class Rope:
         self.root = Vertex(0, len(s), len(s), None, None, None)
     def result(self):
         return self.traverseTree(self.root)
-    def traverseTree(self, root):
+    def getStr(self, cur_node):
+        if (cur_node != None):
+            return (self.s[cur_node.key:cur_node.key + cur_node.length] + ":" + str(cur_node.size))
+        return ""
+    def printNode(self, cur_node):
+        str = self.getStr(cur_node) + "(" + self.getStr(cur_node.left) + ", " + self.getStr(cur_node.right) + ", " + self.getStr(cur_node.parent) + ")"
+        print("node: " + str)
+    def traverseTree(self, root, bVersbose = False):
         res = []
         node_stack = Stack()
         cur_node = root
         while (cur_node != None):
             node_stack.push(cur_node)
+            if bVersbose:
+                self.printNode(cur_node)
             cur_node = cur_node.left
         while (not node_stack.isEmpty()):
             cur_node = node_stack.pop()
@@ -34,43 +43,48 @@ class Rope:
             cur_node = cur_node.right
             while (cur_node != None):
                 node_stack.push(cur_node)
+                if bVersbose:
+                    self.printNode(cur_node)
                 cur_node = cur_node.left
         return ''.join(res)
-    def printTree2(self, label, root):
-        res = self.traverseTree(root)
+    def printTree(self, label, root, bVerbose = False):
+        res = self.traverseTree(root, bVerbose)
         rootDetails = ""
         if (root != None):
             rootDetails = str(root.key) + ":" + self.s[root.key:(root.key + root.length)]
-        #print(label, res, rootDetails)
+        print(label, res, rootDetails)
     def process(self, i, j, k):
         (middle, right) = split(self.root, j+1)
-        #self.printTree("middle+left : ", middle)
+        #self.printTree("middle+left : ", middle, True)
 
         (left, middle) = split(middle, i)
-        #self.printTree("left        : ", left)
-        #self.printTree("middle      : ", middle)
+        #self.printTree("left        : ", left, True)
+        #self.printTree("middle      : ", middle, True)
 
         left = merge(left, right) #merge the left and right pieces
-        #self.printTree("left+right  : ", left)
+        #self.printTree("left+right  : ", left, True)
 
         (left, right) = split(left, k) #split the recomined tree again, so we can insert the middle
-        #self.printTree("new left    : ", left)
+        #self.printTree("new left    : ", left, True)
 
         middle = merge(left, middle)
-        #self.printTree("new middle  : ", middle)
+        #self.printTree("new middle  : ", middle, True)
 
         self.root = merge(middle, right)
-        #self.printTree("new root    : ", self.root)
+        #self.printTree("new root    : ", self.root, True)
+        #print("-------------------------------------------------")
 
 #all tree related operations
 def update(v):
     if v == None:
         return
-    v.size = v.length + (v.left.size if v.left != None else 0) + (v.right.size if v.right != None else 0)
+    v.size = v.length
     if v.left != None:
         v.left.parent = v
+        v.size = v.size + v.left.size
     if v.right != None:
         v.right.parent = v
+        v.size = v.size + v.right.size
 
 def smallRotation(v):
     parent = v.parent
@@ -127,8 +141,9 @@ def findNextIndex(root, index_to_find):
     if index_to_find > root.size:
         #print("index_to_find larger than size", index_to_find, root.size)
         return (None, 0) #this would happen when we are trying to append/insert something to our tree, so nextv would be None
+    index_to_find_orig = index_to_find
     cur_node = root
-    if (cur_node.left != None):
+    if cur_node.left != None:
         cur_index = cur_node.left.size
     else:
         cur_index = 0
@@ -142,8 +157,11 @@ def findNextIndex(root, index_to_find):
         else: #index_to_find > cur_index: #go right!
             cur_node = cur_node.right #here .right will exist since inde_to_find is greater than cur_index
             index_to_find = index_to_find - cur_last #rebasing my index_to_find since i am moving right
-        cur_last = cur_node.key + cur_node.length
-        if (cur_node.left != None):
+        if (cur_node == None):
+            print("should not have happened but ran out of tree! index_to_find_orig, cur_index, index_to_find, cur_last", index_to_find_orig, cur_index, index_to_find, cur_last)
+            cur_index = index_to_find
+            break
+        if cur_node.left != None:
             cur_index = cur_node.left.size
         else:
             cur_index = 0
@@ -151,15 +169,9 @@ def findNextIndex(root, index_to_find):
         isSmaller = index_to_find < cur_index
         isLarger = index_to_find > cur_last
     index_in_node = index_to_find - cur_index
-    #if index_in_node > 0:
-    #    #print("splitting node", self.s[cur_node.key:(cur_node.key + cur_node.length)], "->", self.s[index_in_node:(cur_node.key + cur_node.length)])
-    #    pass
-    #else:
-    #    #print("not splitting node", self.s[cur_node.key:(cur_node.key + cur_node.length)], "index_in_node= ", index_in_node)
-    #    pass
     return (cur_node, index_in_node)
 
-def find(root, index_to_find):
+def find_old(root, index_to_find):
     (node_found, index_in_node) = findNextIndex(root, index_to_find)
     new_root = root
     if (node_found != None):
@@ -168,21 +180,58 @@ def find(root, index_to_find):
         if index_in_node > 0:
             node_left = node_found #new_root
             #we'll make node_right a child of node_left
+
+            #creating node_right and updating its attributes
             new_length = node_left.length - index_in_node
             node_right = Vertex(node_left.key + index_in_node, new_length, new_length, None, node_left.right, node_left)
-            update(node_right)
+            #update(node_right)
+            if (node_right.right != None):
+                node_right.right.parent = node_right
+
+            #now updating attributes of node_left
             node_left.length = index_in_node
             node_left.right = node_right
+            #update(node_left)
+            node_left.size = node_left.size - node_right.length
+
+            #splay the right node, as it's first index is the found index
             node_found = node_right
             new_root = splay(node_found)
+    return (node_found, new_root)
+
+def find(root, index_to_find):
+    (node_found, index_in_node) = findNextIndex(root, index_to_find)
+    new_root = root
+    if (node_found != None):
+        node_found = splay(node_found)
+        #now getting ready to split the node
+        if index_in_node > 0:
+            node_left = node_found #new_root
+            #we'll make node_left a child of node_right
+
+            #creating node_right and updating its attributes
+            new_length = node_found.length - index_in_node
+            node_right = Vertex(node_found.key + index_in_node, node_found.size, new_length, node_left, node_found.right, None)
+
+            #now updating attributes of node_left
+            node_left.length = index_in_node
+            node_left.size = node_left.size - new_length #node_right.length
+            node_left.right = None
+            node_left.parent = node_right
+            #update(node_left)
+
+            #update(node_right)
+
+            node_found = node_right
+            new_root = node_right
     return (node_found, new_root)
 
 #splits tree into left and right
 #right tree root = key, if key was found in tree, else next bigger key becomes root of right tree
 #root of left tree, is the left child of key (or nextv) after the key is splayed
 #here, key is really the index at which to split
-def split(root, key):
-    (result, root) = find(root, key)
+def split(root, split_at_index):
+    (result, root) = find(root, split_at_index)
     if result == None:
         ##print("did not find index", key)
         return (root, None)
