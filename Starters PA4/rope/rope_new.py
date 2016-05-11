@@ -1,4 +1,4 @@
-﻿# python3
+# python3
 
 import sys
 
@@ -231,6 +231,43 @@ def find(root, index_to_find):
 #root of left tree, is the left child of key (or nextv) after the key is splayed
 #here, key is really the index at which to split
 def split(root, split_at_index):
+    (node_found, index_in_node) = findNextIndex(root, split_at_index)
+    if node_found == None:
+        ##print("did not find index", key)
+        return (root, None)
+    else:
+        new_root = splay(node_found)
+        #now getting ready to split the node
+        if index_in_node > 0:
+            #save some properties of the new root
+            right_child = new_root.right
+            treesize = new_root.size
+            rootlength = new_root.length
+
+            #now update left tree
+            node_left = new_root
+            node_left.length = index_in_node
+            node_left.right = None
+            node_left.parent = None
+            node_left.size = node_left.length + (node_left.left.size if node_left.left != None else 0)
+
+            #creating node_right and updating its attributes
+            new_length = rootlength - index_in_node
+            node_right = Vertex(new_root.key + index_in_node, treesize - node_left.size, new_length, None, right_child, None)
+            if right_child != None:
+                right_child.parent = node_right
+
+        else:
+            node_left = new_root.left
+            nlsize = 0
+            if node_left != None:
+                node_left.parent = None
+                nlsize = node_left.size
+            node_right = new_root
+            node_right.left = None
+            node_right.size = node_right.size - nlsize
+        return (node_left, node_right)
+def split_old(root, split_at_index):
     (result, root) = find(root, split_at_index)
     if result == None:
         ##print("did not find index", key)
