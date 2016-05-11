@@ -31,18 +31,22 @@ class Rope:
         res = []
         node_stack = Stack()
         cur_node = root
+        push = node_stack.push
+        isEmpty = node_stack.isEmpty
+        pop = node_stack.pop
         while (cur_node != None):
-            node_stack.push(cur_node)
+            push(cur_node)
             if bVersbose:
                 self.printNode(cur_node)
             cur_node = cur_node.left
-        while (not node_stack.isEmpty()):
-            cur_node = node_stack.pop()
-            last = cur_node.key + cur_node.length
-            res.append(self.s[cur_node.key:last])
+        while (not isEmpty()):
+            cur_node = pop()
+            first = cur_node.key 
+            last = first + cur_node.length
+            res.append(self.s[first:last])
             cur_node = cur_node.right
             while (cur_node != None):
-                node_stack.push(cur_node)
+                push(cur_node)
                 if bVersbose:
                     self.printNode(cur_node)
                 cur_node = cur_node.left
@@ -109,6 +113,8 @@ def smallRotation(v):
             grandparent.right = v
 
 def bigRotation(v):
+    #parent = v.parent
+    #grandparent = parent.parent
     if v.parent.left == v and v.parent.parent.left == v.parent:
         # Zig-zig
         smallRotation(v.parent)
@@ -171,61 +177,6 @@ def findNextIndex(root, index_to_find):
     index_in_node = index_to_find - cur_index
     return (cur_node, index_in_node)
 
-def find_old(root, index_to_find):
-    (node_found, index_in_node) = findNextIndex(root, index_to_find)
-    new_root = root
-    if (node_found != None):
-        #new_root = splay(node_found)
-        #now getting ready to split the node
-        if index_in_node > 0:
-            node_left = node_found #new_root
-            #we'll make node_right a child of node_left
-
-            #creating node_right and updating its attributes
-            new_length = node_left.length - index_in_node
-            node_right = Vertex(node_left.key + index_in_node, new_length, new_length, None, node_left.right, node_left)
-            #update(node_right)
-            if (node_right.right != None):
-                node_right.right.parent = node_right
-
-            #now updating attributes of node_left
-            node_left.length = index_in_node
-            node_left.right = node_right
-            #update(node_left)
-            node_left.size = node_left.size - node_right.length
-
-            #splay the right node, as it's first index is the found index
-            node_found = node_right
-            new_root = splay(node_found)
-    return (node_found, new_root)
-
-def find(root, index_to_find):
-    (node_found, index_in_node) = findNextIndex(root, index_to_find)
-    new_root = root
-    if (node_found != None):
-        node_found = splay(node_found)
-        #now getting ready to split the node
-        if index_in_node > 0:
-            node_left = node_found #new_root
-            #we'll make node_left a child of node_right
-
-            #creating node_right and updating its attributes
-            new_length = node_found.length - index_in_node
-            node_right = Vertex(node_found.key + index_in_node, node_found.size, new_length, node_left, node_found.right, None)
-
-            #now updating attributes of node_left
-            node_left.length = index_in_node
-            node_left.size = node_left.size - new_length #node_right.length
-            node_left.right = None
-            node_left.parent = node_right
-            #update(node_left)
-
-            #update(node_right)
-
-            node_found = node_right
-            new_root = node_right
-    return (node_found, new_root)
-
 #splits tree into left and right
 #right tree root = key, if key was found in tree, else next bigger key becomes root of right tree
 #root of left tree, is the left child of key (or nextv) after the key is splayed
@@ -249,11 +200,12 @@ def split(root, split_at_index):
             node_left.length = index_in_node
             node_left.right = None
             node_left.parent = None
-            node_left.size = node_left.length + (node_left.left.size if node_left.left != None else 0)
+            nlsize = index_in_node + (node_left.left.size if node_left.left != None else 0)
+            node_left.size = nlsize
 
             #creating node_right and updating its attributes
             new_length = rootlength - index_in_node
-            node_right = Vertex(new_root.key + index_in_node, treesize - node_left.size, new_length, None, right_child, None)
+            node_right = Vertex(new_root.key + index_in_node, treesize - nlsize, new_length, None, right_child, None)
             if right_child != None:
                 right_child.parent = node_right
 
@@ -267,21 +219,6 @@ def split(root, split_at_index):
             node_right.left = None
             node_right.size = node_right.size - nlsize
         return (node_left, node_right)
-def split_old(root, split_at_index):
-    (result, root) = find(root, split_at_index)
-    if result == None:
-        ##print("did not find index", key)
-        return (root, None)
-    ##print("found index", key, ". result is ", str(findIndex(result)), str(result.key))
-    right = splay(result)
-    left = right.left
-    #now here, my left's root has correct index, but if left's root has right side children
-    right.left = None
-    if left != None:
-        left.parent = None
-    update(left)
-    update(right)
-    return (left, right)
 
 #this assumes left and right tree don't overlap
 #find the left-most node in right tree
@@ -289,7 +226,6 @@ def split_old(root, split_at_index):
 #obviously this node will not have a left child
 #so, simply attach the left tree as a child of the right tree
 def merge(left, right):
-    #self.printTree("rght b merge:", right)
     if left == None:
         return right
     if right == None:
@@ -298,24 +234,9 @@ def merge(left, right):
         right = right.left
     right = splay(right)
 
-    #while left.right != None:
-    #    left = left.right
-    #left = splay(left)
-    ##self.printTree("left b merge:", left)
-
     right.left = left
     update(right)
     return right
-
-    #now left has no right child and right has no left child, so merge the nodes
-    #left.parent = None
-    #left.size = left.size + right.size
-    #left.length = left.length + right.length
-    #left.right = right.right
-    #if (left.right != None):
-    #    left.right.parent = left
-    #self.printTree("left a merge:", left)
-    #return left
 
 rope = Rope(sys.stdin.readline().strip())
 q = int(sys.stdin.readline())
