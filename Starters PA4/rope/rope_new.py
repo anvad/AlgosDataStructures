@@ -34,6 +34,7 @@ class Rope:
         push = node_stack.push
         isEmpty = node_stack.isEmpty
         pop = node_stack.pop
+        append = res.append
         while (cur_node != None):
             push(cur_node)
             if bVersbose:
@@ -43,12 +44,12 @@ class Rope:
             cur_node = pop()
             first = cur_node.key 
             last = first + cur_node.length
-            res.append(self.s[first:last])
+            append(self.s[first:last])
             cur_node = cur_node.right
             while (cur_node != None):
                 push(cur_node)
-                if bVersbose:
-                    self.printNode(cur_node)
+                #if bVersbose:
+                #    self.printNode(cur_node)
                 cur_node = cur_node.left
         return ''.join(res)
     def printTree(self, label, root, bVerbose = False):
@@ -95,6 +96,7 @@ def smallRotation(v):
     if parent == None:
         return
     grandparent = v.parent.parent
+    psize = parent.size
     if parent.left == v:
         m = v.right
         v.right = parent
@@ -105,6 +107,8 @@ def smallRotation(v):
         parent.right = m
     update(parent)
     update(v)
+    #parent.parent = v
+    #v.size = psize
     v.parent = grandparent
     if grandparent != None:
         if grandparent.left == parent:
@@ -235,7 +239,9 @@ def merge(left, right):
     right = splay(right)
 
     right.left = left
-    update(right)
+    left.parent = right
+    right.size = right.size + left.size
+    #update(right)
     return right
 
 rope = Rope(sys.stdin.readline().strip())
