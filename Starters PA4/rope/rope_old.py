@@ -20,7 +20,6 @@ class Rope:
         #list_indices = [Vertex(0, 1, None, None, None)]
         #list_indices.extend(range(lens))
         self.root = reduce(insert_special, range(1, lens), Vertex(0, 1, None, None, None))
-        #self.printTree("init root : ", self.root)
     def result(self):
         return self.traverseTree(self.root)
     def getStr(self, cur_node):
@@ -38,7 +37,6 @@ class Rope:
         isEmpty = node_stack.isEmpty
         pop = node_stack.pop
         s = self.s
-        append = res.append
         while (cur_node != None):
             push(cur_node)
             if bVersbose:
@@ -46,38 +44,30 @@ class Rope:
             cur_node = cur_node.left
         while (not isEmpty()):
             cur_node = pop()
-            first = cur_node.key
+            first = cur_node.key 
             #last = first + cur_node.length
-            append(s[first])
+            res.append(s[first])
             cur_node = cur_node.right
             while (cur_node != None):
                 push(cur_node)
-                #if bVersbose:
-                #    self.printNode(cur_node)
+                if bVersbose:
+                    self.printNode(cur_node)
                 cur_node = cur_node.left
         return ''.join(res)
     def visit(self, cur_node):
         self.res.append(self.s[cur_node.key])
-    def printTree(self, label, root, bVerbose = False):
-        res = self.traverseTree(root, bVerbose)
-        rootDetails = ""
-        if (root != None) and bVerbose:
-            rootDetails = str(root.key) + ":" + self.s[root.key:(root.key + root.length)]
-        print(label, res, rootDetails)
-    def process_old(self, i, j, k):
+    def process(self, i, j, k):
         # Write your code here
         self.splice(i, j, k)
-    def process(self, fr, to, bf):
-        if fr == bf:
-            return #nothing to do here since we are splitting and re-joining at the same point!
+    def splice(self, fr, to, bf):
         #print("frm to before", fr, to, bf)
         #self.printTree(root, "root: ")
         #(foundNode, root) = find(root, fr)
-
+        
         (middle, right) = split(self.root, to + 1)
-        #self.printTree("middle+left : ", middle)
-        #self.printTree("right : ", right)
-
+        #self.printTree(middle, "middle+left : ")
+        #self.printTree(right, "right : ")
+        
         (left, middle) = split(middle, fr)
         #self.printTree(left, "left : ")
         #self.printTree(middle, "middle : ")
@@ -89,25 +79,17 @@ class Rope:
         #(middle, right) = split(middle, to + 1 - fr)
         #self.printTree(middle, "middle : ")
         #self.printTree(right, "right : ")
-        #rootsize = self.root.size
-        #rightsie = (rootsize - to - 1)
-        if fr > bf: #it means bf is within left tree
-            (left, middle2) = split(left, bf)
-            mergelist = [left, middle, middle2, right]
-            #self.root = merge_special(merge_special(merge_special(left, middle), middle2), right)
-        else: #it means bf is at boundary of left and right, or is in right tree
-            (middle2, right) = split(right, bf - fr)
-            if middle2 != None:
-                while middle2.left != None:
-                    middle2 = middle2.left
-                middle2 = splay(middle2)
-            mergelist = [left, middle2, middle, right]
-            
-            #self.root = merge_special(merge_special(merge(left, middle2), middle), right) #notice i have one call to merge, since middle2 may have a left child
+        left = merge(left, right) #merge the left and right pieces
+        #self.printTree(left, "left+right : ")
         
-        self.root = reduce(merge_special, mergelist)
-        #self.root = merge_special(left, )
-        #self.printTree("new root : ", self.root)
+        (left, right) = split(left, bf) #split the recomined tree again, so we can insert the middle
+        #self.printTree(left, "new left : ")
+        
+        middle = merge(left, middle)
+        #self.printTree(middle, "new middle : ")
+        
+        self.root = merge(middle, right)
+        #self.printTree(root, "new root : ")
 
 
 #we can use a splay tree to store the string and to cut and merge the pieces
@@ -161,8 +143,6 @@ def smallRotation(v):
     if parent == None:
         return
     grandparent = v.parent.parent
-    psize = parent.size
-    vsize = v.size
     if parent.left == v:
         m = v.right
         v.right = parent
@@ -171,20 +151,13 @@ def smallRotation(v):
         m = v.left
         v.left = parent
         parent.right = m
-    #update(parent)
-    msize = 0
-    if m != None:
-        m.parent = parent
-        msize = m.size
-    parent.size = psize - vsize + msize
-    #update(v)
-    parent.parent = v
-    v.size = psize
+    update(parent)
+    update(v)
     v.parent = grandparent
     if grandparent != None:
         if grandparent.left == parent:
             grandparent.left = v
-        else:
+        else: 
             grandparent.right = v
 
 def bigRotation(v):
@@ -195,8 +168,8 @@ def bigRotation(v):
     elif v.parent.right == v and v.parent.parent.right == v.parent:
         # Zig-zig
         smallRotation(v.parent)
-        smallRotation(v)
-    else:
+        smallRotation(v)        
+    else: 
         # Zig-zag
         smallRotation(v)
         smallRotation(v)
@@ -221,20 +194,20 @@ def splay(v):
 # bigger key (next value in the order).
 # If the key is bigger than all keys in the tree,
 # then result is None.
-def findk(root, key):
+def findk(root, key): 
     v = root
     last = root
     nextv = None
     while v != None:
         if v.key >= key and (nextv == None or v.key < nextv.key):
-            nextv = v
+            nextv = v        
         last = v
         if v.key == key:
-            break
+            break        
         if v.key < key:
             v = v.right
-        else:
-            v = v.left
+        else: 
+            v = v.left            
     root = splay(last)
     return (nextv, root)
 
@@ -250,9 +223,9 @@ def find(root, index):
 #also note, we'll never have to revisit a node since indices will be unique
 def findi(root, index_to_find):
     if root == None:
-        return (root, root)
+        return root
     if index_to_find >= root.size:
-        return (None, root) #becuase we don't have an index as large in our tree
+        return None #becuase we don't have an index as large in our tree
     #if index_to_find < 0:
     #    return None #because ours is a zero based index
     cur_node = root
@@ -273,34 +246,31 @@ def findi(root, index_to_find):
             cur_index = cur_node.left.size
         else:
             cur_index = 0
-    #return cur_node
-    newRoot = root
-    if cur_node != None:
-        newRoot = splay(cur_node)
-    return (cur_node, newRoot)
+    return cur_node    
 #splits tree into left and right
 #right tree root = key, if key was found in tree, else next bigger key becomes
 #root of right tree
 #root of left tree, is the left child of key (or nextv) after the key is
 #splayed
 #here, key is really the index at which to split
-def split(root, key):
-    (result, root) = findi(root, key)
+def split(root, key):    
+    (result, root) = find(root, key)
     if result == None:
         #print("did not find index", key)
         return (root, None)
     #print("found index", key, ".    result is ", str(findIndex(result)),
     #str(result.key))
-    #right = splay(result)
-    right = result
+    right = splay(result)
     left = right.left
+    #now here, my left's root has correct index, but if left's root has right
+    #side children
     right.left = None
     if left != None:
         left.parent = None
-        right.size = right.size - left.size
-    #update(left)
-    #update(right)
+    update(left)
+    update(right)
     return (left, right)
+
 
 #this assumes left and right tree don't overlap
 #find the left-most node in right tree
@@ -316,26 +286,9 @@ def merge(left, right):
         right = right.left
     right = splay(right)
     right.left = left
-    left.parent = right
-    #update(right)
-    right.size = right.size + left.size
+    update(right)
     return right
 
-#in our special case the root of the right node does not have a left child
-def merge_special(left, right):
-    if left == None:
-        return right
-    if right == None:
-        return left
-    #while right.left != None:
-    #    right = right.left
-    #right = splay(right)
-    right.left = left
-    left.parent = right
-    #update(right)
-    right.size = right.size + left.size
-    return right
-    
 # Code that uses splay tree to solve the problem
 
 #root = None
@@ -364,14 +317,14 @@ def erase(x):
         #x not found, so just recombine
         root = merge(left, right)
 
-def search(x):
+def search(x): 
     global root
     # Implement find yourself
     (v,root) = find(root, x)
     if (v != None) and (v.key == x):
         return True
     return False
-
+    
 
 
 rope = None

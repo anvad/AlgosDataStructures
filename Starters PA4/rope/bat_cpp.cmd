@@ -1,5 +1,4 @@
-abcdef
-3
-0 0 5
-4 4 5
-5 5 0
+@echo off
+echo rope.exe before: %time%
+rope.exe <%1\test0.txt >out_exe.txt
+echo rope.exe after: %time%
