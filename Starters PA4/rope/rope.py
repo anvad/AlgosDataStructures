@@ -2,6 +2,7 @@
 
 import sys
 from functools import reduce
+import time
 
 #import sys, threading
 #sys.setrecursionlimit(10**7) # max depth of recursion
@@ -161,8 +162,9 @@ def smallRotation(v):
     if parent == None:
         return
     grandparent = v.parent.parent
-    psize = parent.size
+    #psize = parent.size
     vsize = v.size
+    v.size = parent.size
     if parent.left == v:
         m = v.right
         v.right = parent
@@ -172,14 +174,17 @@ def smallRotation(v):
         v.left = parent
         parent.right = m
     #update(parent)
-    msize = 0
+    #msize = 0
     if m != None:
         m.parent = parent
-        msize = m.size
-    parent.size = psize - vsize + msize
+        #msize = m.size
+        parent.size = parent.size - vsize + m.size
+    else:
+        parent.size = parent.size - vsize
+    #parent.size = parent.size - vsize + msize
     #update(v)
     parent.parent = v
-    v.size = psize
+    #v.size = psize
     v.parent = grandparent
     if grandparent != None:
         if grandparent.left == parent:
@@ -376,10 +381,27 @@ def search(x):
 
 rope = None
 root = None
+b = time.time()
+b1 = b
 rope = Rope(sys.stdin.readline().strip())
+a = time.time()
+print ("time to init rope = ", a-b)
 q = int(sys.stdin.readline())
+b = time.time()
 for _ in range(q):
+    if _ % 10000 == 0:
+        a = time.time()
+        print("time to run 10000 queries is ", a - b)
+        b = a
     i, j, k = map(int, sys.stdin.readline().strip().split())
     rope.process(i, j, k)
-print(rope.result())
+#print(rope.result())
+a = time.time()
+print("time to run 10000 queries is ", a - b)
+b = a
+ares = rope.result()
+a = time.time()
+print("time to traverse tree ", a - b)
 #rope.PrintResult()
+
+print("time from start to finish ", a - b1)
