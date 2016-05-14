@@ -2,20 +2,23 @@
 #include <string>
 #include <iostream>
 #include <stack>
+#include <sstream>
+#include <chrono>
+#include <ctime>
 
 using namespace std;
 
 // Vertex of a splay tree
 struct Vertex {
-  int key;
+  char key;
   // size of all the keys in the subtree - remember to update
   // it after each operation that changes the tree.
-  long long size;
+  int size;
   Vertex* left;
   Vertex* right;
   Vertex* parent;
 
-  Vertex(char key, long long size, Vertex* left, Vertex* right, Vertex* parent) 
+  Vertex(char key, int size, Vertex* left, Vertex* right, Vertex* parent) 
   : key(key), size(size), left(left), right(right), parent(parent) {}
 };
 
@@ -38,17 +41,29 @@ void small_rotation(Vertex* v) {
     return;
   }
   Vertex* grandparent = v->parent->parent;
+  Vertex* m = NULL;
+  int vsize = v->size;
+  int psize = parent->size;
+  int msize = 0;
   if (parent->left == v) {
-    Vertex* m = v->right;
+    m = v->right;
     v->right = parent;
     parent->left = m;
   } else {
-    Vertex* m = v->left;
+    m = v->left;
     v->left = parent;
     parent->right = m;
   }
-  update(parent);
-  update(v);
+  //update(parent);
+  if (m != NULL) {
+	  m->parent = parent;
+	  msize = m->size;
+  }
+  parent->size = psize - vsize + msize;
+  //update(v);
+  parent->parent = v;
+  v->size = psize;
+  
   v->parent = grandparent;
   if (grandparent != NULL) {
     if (grandparent->left == parent) {
@@ -122,12 +137,11 @@ Vertex* findi(Vertex*& root, int index_to_find) {
 	Vertex* v = root;
 	Vertex* last = root;
 	Vertex* next = NULL;
-	long long cur_index = 0;
+	int cur_index = 0;
 	if (v->left != NULL) {
 		cur_index = v->left->size;
 	}
   	while (cur_index != index_to_find) {
-		last = v;
 		if (index_to_find < cur_index) {
 			v = v->left;
 		}
@@ -137,7 +151,8 @@ Vertex* findi(Vertex*& root, int index_to_find) {
 		}
 		if (v == NULL) {
 			break;
-		} 
+		}
+		last = v;
 		if (v->left != NULL) {
 			cur_index = v->left->size;
 		}
@@ -152,7 +167,7 @@ Vertex* findi(Vertex*& root, int index_to_find) {
 
 void split(Vertex* root, int key, Vertex*& left, Vertex*& right) {
   right = findi(root, key);
-  splay(root, right);
+  //splay(root, right);
   if (right == NULL) {
     left = root;
     return;
@@ -161,12 +176,13 @@ void split(Vertex* root, int key, Vertex*& left, Vertex*& right) {
   right->left = NULL;
   if (left != NULL) {
     left->parent = NULL;
+	right->size -= left->size;
   }
-  update(left);
-  update(right);
+  //update(left);
+  //update(right);
 }
 
-Vertex* merge(Vertex* left, Vertex* right) {
+Vertex* merge_orig(Vertex* left, Vertex* right) {
   if (left == NULL) return right;
   if (right == NULL) return left;
   Vertex* min_right = right;
@@ -176,6 +192,18 @@ Vertex* merge(Vertex* left, Vertex* right) {
   splay(right, min_right);
   right->left = left;
   update(right);
+  return right;
+}
+
+Vertex* merge(Vertex* left, Vertex* right) {
+  if (left == NULL) return right;
+  if (right == NULL) return left;
+  Vertex* min_right = right;
+
+  right->left = left;
+  //update(right);
+  left->parent = right;
+  right->size += left->size;
   return right;
 }
 
@@ -191,7 +219,8 @@ class Rope {
 public:
 	Rope(const std::string &s) : s(s) {
 		root = new Vertex(s[0], 1, NULL, NULL, NULL);
-		for (int i=1; i < s.length(); ++i) {
+		int slen = s.length();
+		for (int i=1; i < slen; ++i) {
 			root = insert_special(root, s[i], i);
 		}
 	}
@@ -209,19 +238,36 @@ public:
 		Vertex* left = NULL;
 		Vertex* middle = NULL;
 		Vertex* middle2 = NULL;
+		Vertex* middle3 = NULL;
 		Vertex* right = NULL;
 		Vertex* new_left = NULL;
 		Vertex* new_vertex = NULL;  
 		split(root, j+1, middle, right);
-		split(middle, i, left, middle2);
-		new_left = merge(left, right);
-		split(new_left, k, left, right);
-		new_left = merge(left, middle2);
-		root = merge(new_left, right);
+		split(middle, i, left, middle);
+		//new_left = merge(left, right);
+		if (i > k) {
+			split(left, k, left, middle2);
+			root = merge(merge(merge(left, middle), middle2), right);
+		}
+		else {
+			split(right, k - i, middle2, right);
+			if (middle2 != NULL) {
+				while (middle2->left != NULL) {
+					middle2 = middle2->left;
+				}
+				splay(middle2, middle2);
+			}
+			root = merge(merge(merge(left, middle2), middle), right);
+		}
+		//split(new_left, k, left, right);
+		//new_left = merge(left, middle);
+		//root = merge(new_left, right);
 	}
 	
-	std::string traverseTree(Vertex* root) {
-		string new_s = "";
+	void traverseTree(Vertex* root) {
+		//string new_s = "";
+		//std::stringstream ss;
+		int i = 0;
 		stack<Vertex*> st;
 		Vertex* v = root;
 		while (v != NULL) {
@@ -231,18 +277,23 @@ public:
 		while (!st.empty()) {
 			v = st.top();
 			st.pop();
-			new_s += v->key;
+			//new_s += v->key;
+			//ss << v->key;
+			s[i++] = v->key;
 			v = v->right;
 			while (v != NULL) {
 				st.push(v);
 				v = v->left;
 			}
 		}
-		return new_s;
+		//return new_s;
+		//return ss.str();
 	}
 
 	std::string result() {
-		return traverseTree(root);
+		traverseTree(root);
+		//return traverseTree(root);
+		return s;
 	}
 };
 
@@ -250,16 +301,37 @@ int main() {
 	std::ios_base::sync_with_stdio(0);
 	std::string s;
 	std::cin >> s;
+	std::chrono::time_point<std::chrono::system_clock> s0, start, end;
+    start = std::chrono::system_clock::now();
+	s0 = start;
 	Rope rope(s);
+	end = std::chrono::system_clock::now();
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	cout << "rope init took " << elapsed_seconds.count() << " seconds" << endl;
 	//std::cout << "read rope!" << endl;
 	//cout << "INT_MAX = " << INT_MAX << endl;
 	int actions;
 	std::cin >> actions;
 	int i, j, k;
+	start = std::chrono::system_clock::now();
     for (int action_index = 0; action_index < actions; ++action_index) {
+		if ((action_index % 10000) == 0) {
+			end = std::chrono::system_clock::now();
+			elapsed_seconds = end-start;
+			start = end;
+			cout << "10K iterations took " << elapsed_seconds.count() << " seconds" << endl;
+		}
 		std::cin >> i >> j >> k;
 		//cout << i << "," << j << ", " << k << endl;
 		rope.process(i, j, k);
 	}
+	end = std::chrono::system_clock::now();
+	elapsed_seconds = end-start;
+	cout << "10K iterations took " << elapsed_seconds.count() << " seconds" << endl;
 	std::cout << rope.result() << std::endl;
+	end = std::chrono::system_clock::now();
+	elapsed_seconds = end-start;
+	cout << "final tree traversal took " << elapsed_seconds.count() << " seconds" << endl;
+	elapsed_seconds = end-s0;
+	cout << "total time taken " << elapsed_seconds.count() << " seconds" << endl;
 }
