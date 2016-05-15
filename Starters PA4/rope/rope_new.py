@@ -159,7 +159,7 @@ def findNextIndex(root, index_to_find):
         cur_index = 0
     cur_last = cur_index + cur_node.length
     isSmaller = index_to_find < cur_index
-    isLarger = index_to_find > cur_last
+    isLarger = index_to_find >= cur_last
     while isSmaller or isLarger: #while curent node does not contain the index
         #print("index_to_find, cur_index, cur_last", index_to_find, cur_index)
         if isSmaller: #go left!
@@ -177,7 +177,7 @@ def findNextIndex(root, index_to_find):
             cur_index = 0
         cur_last = cur_index + cur_node.length
         isSmaller = index_to_find < cur_index
-        isLarger = index_to_find > cur_last
+        isLarger = index_to_find >= cur_last
     index_in_node = index_to_find - cur_index
     return (cur_node, index_in_node)
 

@@ -2,24 +2,24 @@
 #include <string>
 #include <iostream>
 #include <stack>
-#include <sstream>
-#include <chrono>
-#include <ctime>
+//#include <sstream>
+//#include <chrono>
+//#include <ctime>
 
 using namespace std;
 
 // Vertex of a splay tree
 struct Vertex {
-  int start_index;
-  // start_index of substring (from orig string) stored in this node
+  char key;
+  // size of all the keys in the subtree - remember to update
+  // it after each operation that changes the tree.
   int size;
-  int length;
   Vertex* left;
   Vertex* right;
   Vertex* parent;
 
-  Vertex(int start_index, int size, int length, Vertex* left, Vertex* right, Vertex* parent) 
-  : start_index(start_index), size(size), length(length), left(left), right(right), parent(parent) {}
+  Vertex(char key, int size, Vertex* left, Vertex* right, Vertex* parent) 
+  : key(key), size(size), left(left), right(right), parent(parent) {}
 };
 
 
@@ -104,26 +104,26 @@ void splay(Vertex*& root, Vertex* v) {
   root = v;
 }
 
-// Searches for the given start_index in the tree with the given root
+// Searches for the given key in the tree with the given root
 // and calls splay for the deepest visited node after that.
-// If found, returns a pointer to the node with the given start_index.
+// If found, returns a pointer to the node with the given key.
 // Otherwise, returns a pointer to the node with the smallest
-// bigger start_index (next value in the order).
-// If the start_index is bigger than all start_indexs in the tree, 
+// bigger key (next value in the order).
+// If the key is bigger than all keys in the tree, 
 // returns NULL.
-Vertex* find_orig(Vertex*& root, int start_index) {
+Vertex* find_orig(Vertex*& root, int key) {
   Vertex* v = root;
   Vertex* last = root;
   Vertex* next = NULL;
   while (v != NULL) {
-    if (v->start_index >= start_index && (next == NULL || v->start_index < next->start_index)) {
+    if (v->key >= key && (next == NULL || v->key < next->key)) {
       next = v;
     }
     last = v;
-    if (v->start_index == start_index) {
+    if (v->key == key) {
       break;      
     }
-    if (v->start_index < start_index) {
+    if (v->key < key) {
       v = v->right;
     } else {
       v = v->left;
@@ -133,10 +133,11 @@ Vertex* find_orig(Vertex*& root, int start_index) {
   return next;
 }
 
-Vertex* findi_orig(Vertex*& root, int index_to_find) {
+Vertex* findi(Vertex*& root, int index_to_find) {
 	Vertex* v = root;
 	Vertex* last = root;
 	Vertex* next = NULL;
+    
 	int cur_index = 0;
 	if (v->left != NULL) {
 		cur_index = v->left->size;
@@ -165,116 +166,32 @@ Vertex* findi_orig(Vertex*& root, int index_to_find) {
 	return next;
 }
 
-//splits the given tree into left and right trees
-//right tree starts at index_to_find, if found. else, right tree is NULL
 void split(Vertex* root, int index_to_find, Vertex*& left, Vertex*& right) {
-	if (root == NULL) {
-		left = root;
-		right = root;
-		return;
-	}
-	if (index_to_find >= root->size) {
-		left = root; //there is no bigger node, so right is NULL
-		right = NULL;
-		return;
-	}
-	Vertex* v = root;
-	//Vertex* last = root;
-	//Vertex* next = NULL;
-	int index_to_find_orig = index_to_find;
-	int cur_index = 0;
-	if ( v->left != NULL) {
-		cur_index = v->left->size;
-	}
-	int cur_last = cur_index + v->length;
-	bool isSmaller = index_to_find < cur_index;
-	bool isLarger = index_to_find >= cur_last;
-	while (isSmaller || isLarger) { //while curent node does not contain the index
-		if (isSmaller) {
-			v = v->left; //go left!
+    if (root == NULL) {
+        left = NULL;
+        right = NULL;
+        return;
+    }
+		if (index_to_find >= root->size) {
+			left = root; //there is no bigger node, so right is NULL
+			right = NULL;
+			return;
 		}
-		else {
-			v = v->right; //go right!
-			index_to_find -= cur_last; //rebasing my index_to_find since i am moving right
-		}
-		if (v == NULL) {
-			cout << "should not have happened but ran out of tree! index_to_find_orig, cur_index, index_to_find, cur_last" << index_to_find_orig << ", " << cur_index << ", " << index_to_find << ", " << cur_last << endl;
-			cur_index = index_to_find;
-			break;
-		}
-		if ( v->left != NULL) {
-			cur_index = v->left->size;
-		}
-		else {
-			cur_index = 0;
-		}
-		cur_last = cur_index + v->length;
-		isSmaller = index_to_find < cur_index;
-		isLarger = index_to_find >= cur_last;
-	}
-	if ( v == NULL ) {
-		left = root;
-		right = NULL;
-		return;
-	}
-	int index_in_node = index_to_find - cur_index;
-	//now the following is all split stuff
-	//we'll just set the values of left and right'
-	splay(root, v);
-	if (index_in_node > 0) { //we need to split current node
-		//save some properties of the new root
-		Vertex* right_child = root->right;
-		int treesize = root->size;
-		int rootlength = root->length;
-		
-		//now update left tree
-		left = root;
-		left->length = index_in_node;
-		left->right = NULL;
-		left->parent = NULL;
-		int nlsize = index_in_node;
-		if (left->left != NULL) { nlsize += left->left->size; }
-		left->size = nlsize;
-		
-		//creating the right node and updating its attributes
-		int rlength = rootlength - index_in_node;
-		right = new Vertex(root->start_index + index_in_node, treesize - nlsize, rlength, NULL, right_child, NULL);
-		if (right_child != NULL) {
-			right_child->parent = right;
-		}
-	}
-	else {
-		//index_to_find is the first index of the root! so, easy to split
-		left = root->left;
-		int nlsize = 0;
-		if ( left != NULL) {
-			left->parent = NULL;
-			nlsize = left->size;
-		}
-		right = root;
-		right->left = NULL;
-		right->size -= nlsize;
-	}
+    right = findi(root, index_to_find);
+    //splay(root, right);
+    if (right == NULL) {
+        left = root;
+        return;
+    }
+    left = right->left;
+    right->left = NULL;
+    if (left != NULL) {
+        left->parent = NULL;
+        right->size -= left->size;
+    }
+    //update(left);
+    //update(right);
 }
-
-/*
-void split_orig(Vertex* root, int index_to_find, Vertex*& left, Vertex*& right) {
-  right = findi(root, index_to_find);
-  //splay(root, right);
-  if (right == NULL) {
-    left = root;
-    return;
-  }
-  left = right->left;
-  right->left = NULL;
-  if (left != NULL) {
-    left->parent = NULL;
-	right->size -= left->size;
-  }
-  //update(left);
-  //update(right);
-}
-*/
 
 Vertex* merge_orig(Vertex* left, Vertex* right) {
   if (left == NULL) return right;
@@ -301,26 +218,26 @@ Vertex* merge(Vertex* left, Vertex* right) {
   return right;
 }
 
-/*
 Vertex* insert_special(Vertex* root, char c, int i) {
 	Vertex* v = new Vertex(c, i+1, root, NULL, NULL);
 	root->parent = v;
 	return v;
 }
-*/
 
 class Rope {
 	std::string s;
 	Vertex* root;
 public:
 	Rope(const std::string &s) : s(s) {
-		int slen = s.length();
-		/*root = new Vertex(s[0], 1, NULL, NULL, NULL);
-		int slen = s.length();
-		for (int i=1; i < slen; ++i) {
-			root = insert_special(root, s[i], i);
-		}*/
-		root = new Vertex(0, slen, slen, NULL, NULL, NULL);
+  //void init() {
+			int slen = s.length();
+			//if (slen > 10000) {
+			//		cout << "init long string of length " << slen << endl;
+			//}
+			root = new Vertex(s[0], 1, NULL, NULL, NULL);
+			for (int i=1; i < slen; ++i) {
+				root = insert_special(root, s[i], i);
+			}
 	}
 
 	void process_naive( int i, int j, int k ) {
@@ -341,14 +258,20 @@ public:
 		Vertex* new_left = NULL;
 		Vertex* new_vertex = NULL;  
 		split(root, j+1, middle, right);
+    //cout << "first split done" << endl;
 		split(middle, i, left, middle);
+    //cout << "2nd split done \'" << middle->key << "\' " << endl;
 		//new_left = merge(left, right);
 		if (i > k) {
+      //cout << "3rd split (left) about to start" << endl;
 			split(left, k, left, middle2);
+      //cout << "3rd split done" << endl;
 			root = merge(merge(merge(left, middle), middle2), right);
 		}
 		else {
+      //cout << "3rd split (right) about to start" << endl;
 			split(right, k - i, middle2, right);
+      //cout << "3rd split done" << endl;
 			if (middle2 != NULL) {
 				while (middle2->left != NULL) {
 					middle2 = middle2->left;
@@ -375,9 +298,9 @@ public:
 		while (!st.empty()) {
 			v = st.top();
 			st.pop();
-			new_s += s.substr(v->start_index, v->length);
-			//ss << v->start_index;
-			//s[i++] = v->start_index;
+			new_s += v->key;
+			//ss << v->key;
+			//s[i++] = v->key;
 			v = v->right;
 			while (v != NULL) {
 				st.push(v);
@@ -403,6 +326,8 @@ int main() {
     //start = std::chrono::system_clock::now();
 	//s0 = start;
 	Rope rope(s);
+  //rope.init();
+  //cout << "init done" << endl;
 	//end = std::chrono::system_clock::now();
 	//std::chrono::duration<double> elapsed_seconds = end-start;
 	//cout << "rope init took " << elapsed_seconds.count() << " seconds" << endl;
@@ -425,7 +350,6 @@ int main() {
 	}
 	//end = std::chrono::system_clock::now();
 	//elapsed_seconds = end-start;
-	//start = end;
 	//cout << "10K iterations took " << elapsed_seconds.count() << " seconds" << endl;
 	std::cout << rope.result() << std::endl;
 	//end = std::chrono::system_clock::now();
